@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Nano 33 BLE - Sensor Analyse</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #1c1e21; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        h1 { margin-bottom: 20px; color: #007bff; }
+        
+        .controls { margin-bottom: 20px; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
+        button { padding: 10px 20px; font-size: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        #connectBtn { background: #007bff; color: white; }
+        #connectBtn:hover { background: #0056b3; }
+        #downloadBtn { background: #28a745; color: white; }
+        #downloadBtn:hover { background: #218838; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
+
+        /* Tabelle für Werte */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; background: #fff; }
+        th, td { padding: 12px; border: 1px solid #dee2e6; text-align: center; }
+        th { background: #f8f9fa; color: #495057; }
+        .axis-name { font-weight: bold; width: 80px; }
+        .val-now { font-size: 1.2em; font-weight: bold; color: #007bff; }
+        .val-min { color: #dc3545; font-weight: bold; }
+        .val-max { color: #28a745; font-weight: bold; }
+
+        .chart-container { height: 350px; width: 100%; margin-top: 20px; }
+        .status-bar { font-size: 13px; color: #6c757d; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BMI270 Sensor Analyse</h1>
+    
+    <div class="controls">
+        <button id="connectBtn">Sensor verbinden</button>
+        <button id="downloadBtn" disabled>CSV Export</button>
+        <button id="resetBtn" onclick="resetMinMax()">Min/Max zurücksetzen</button>
+        <button id="dataStart" onclick="dataStart()">Datensammlung START</button>
+        <button id="dataStop" onclick="dataStop()">Datensammlung STOP</button>
+    </div>
+
+    <div class="status-bar">
+        Status: <span id="statusText">Bereit</span> | 
+        Datensätze: <span id="recordCount">0</span>
+    </div>
+	
+	<h2>Beschleunigung</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th colspan="3">Beschleunigung (m/s²)</th>
+                <th colspan="3">Drehung (Grad)</th>
+                <th colspan="3">Magnetometer (mTesla)</th>
+            </tr>
+            <tr>
+                <th>Achse</th>
+				<th>Akt.</th><th>Min.</th><th>Max.</th>
+                <th>Akt.</th><th>Min.</th><th>Max.</th>
+                <th>Akt.</th><th>Min.</th><th>Max.</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="axis-name" style="color:#ff5252">X</td>
+                <td id="nowX"  class="val-now">0.00</td><td id="minX"  class="val-min">0.00</td><td id="maxX"  class="val-max">0.00</td>
+                <td id="nowXg" class="val-now">0.00</td><td id="minXg" class="val-min">0.00</td><td id="maxXg" class="val-max">0.00</td>
+                <td id="nowXm" class="val-now">0.00</td><td id="minXm" class="val-min">0.00</td><td id="maxXm" class="val-max">0.00</td>
+            </tr>
+            <tr>
+                <td class="axis-name" style="color:#4caf50">Y</td>
+                <td id="nowY" class="val-now">0.00</td>
+                <td id="minY" class="val-min">0.00</td>
+                <td id="maxY" class="val-max">0.00</td>
+                <td id="nowYg" class="val-now">0.00</td>
+                <td id="minYg" class="val-min">0.00</td>
+                <td id="maxYg" class="val-max">0.00</td>
+                <td id="nowYm" class="val-now">0.00</td>
+                <td id="minYm" class="val-min">0.00</td>
+                <td id="maxYm" class="val-max">0.00</td>
+            </tr>
+            <tr>
+                <td class="axis-name" style="color:#2196f3">Z</td>
+                <td id="nowZ" class="val-now">0.00</td>
+                <td id="minZ" class="val-min">0.00</td>
+                <td id="maxZ" class="val-max">0.00</td>
+                <td id="nowZg" class="val-now">0.00</td>
+                <td id="minZg" class="val-min">0.00</td>
+                <td id="maxZg" class="val-max">0.00</td>
+                <td id="nowZm" class="val-now">0.00</td>
+                <td id="minZm" class="val-min">0.00</td>
+                <td id="maxZm" class="val-max">0.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="chart-container"><canvas id="liveChart" ></canvas></div>
+    <div class="chart-container"><canvas id="liveChart2"></canvas></div>
+    <div class="chart-container"><canvas id="liveChart3"></canvas></div>
+
+</div>
+
+<script>
+    let sensorLog = [];
+    let sensorLogg= [];
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    let minXg= Infinity, maxXg= -Infinity;
+    let minYg= Infinity, maxYg= -Infinity;
+    let minZg= Infinity, maxZg= -Infinity;
+    let minXm= Infinity, maxXm= -Infinity;
+    let minYm= Infinity, maxYm= -Infinity;
+    let minZm= Infinity, maxZm= -Infinity;
+
+    const maxPointsInGraph = 60;
+    const ctx = document.getElementById('liveChart').getContext('2d');
+    const liveChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                y: { min: -25, max: 25 },
+                x: { display: false }
+            }
+        }
+    });
+    const ctx2 = document.getElementById('liveChart2').getContext('2d');
+    const liveChart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                y: { min: -500, max: 500 },
+                x: { display: false }
+            }
+        }
+    });
+    const ctx3 = document.getElementById('liveChart3').getContext('2d');
+    const liveChart3 = new Chart(ctx3, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                y: { min: -50, max: 50 },
+                x: { display: false }
+            }
+        }
+    });
+
+    const SERVICE_UUID = 0x1101;
+    const CHARACTERISTIC_UUID = 0x2101;
+
+    function resetMinMax() {
+        minX = minY = minZ = Infinity;
+        maxX = maxY = maxZ = -Infinity;
+        minXg= minYg= minZg= Infinity;
+        maxXg= maxYg= maxZg= -Infinity;
+        minXm= minYm= minZm= Infinity;
+        maxXm= maxYm= maxZm= -Infinity;
+        document.querySelectorAll('.val-min, .val-max').forEach(el => el.innerText = "0.00");
+    }
+	
+	function dataStart() {
+		sensorLog = [];
+		document.getElementById('recordCount').innerText = sensorLog.length;
+	}
+
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+        try {
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [{ name: 'Nano33_IMU' }],
+                optionalServices: [SERVICE_UUID]
+            });
+
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService(SERVICE_UUID);
+            const char = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+            await char.startNotifications();
+            document.getElementById('statusText').innerText = "Verbunden";
+            document.getElementById('connectBtn').disabled = true;
+            document.getElementById('downloadBtn').disabled = false;
+
+            char.addEventListener('characteristicvaluechanged', (event) => {
+                const rawString = new TextDecoder().decode(event.target.value);
+                const [ax, ay, az, gx, gy, gz, mx, my, mz] = rawString.split(',').map(Number);
+                
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString() + "." + now.getMilliseconds().toString().padStart(3, '0');
+
+                // Extremwerte berechnen
+                if (ax < minX)  minX  = ax; if (ax > maxX)  maxX = ax;
+                if (ay < minY)  minY  = ay; if (ay > maxY)  maxY = ay;
+                if (az < minZ)  minZ  = az; if (az > maxZ)  maxZ = az;
+                if (gx < minXg) minXg = gx; if (gx > maxXg) maxXg= gx;
+                if (gy < minYg) minYg = gy; if (gy > maxYg) maxYg= gy;
+                if (gz < minZg) minZg = gz; if (gz > maxZg) maxZg= gz;
+                if (mx < minXm) minXm = mx; if (mx > maxXm) maxXm= mx;
+                if (my < minYm) minYm = my; if (my > maxYm) maxYm= my;
+                if (mz < minZm) minZm = mz; if (mz > maxZm) maxZm= mz;
+
+                // UI Tabelle aktualisieren
+                document.getElementById('nowX').innerText = ax.toFixed(2);
+                document.getElementById('minX').innerText = minX.toFixed(2);
+                document.getElementById('maxX').innerText = maxX.toFixed(2);
+
+                document.getElementById('nowY').innerText = ay.toFixed(2);
+                document.getElementById('minY').innerText = minY.toFixed(2);
+                document.getElementById('maxY').innerText = maxY.toFixed(2);
+
+                document.getElementById('nowZ').innerText = az.toFixed(2);
+                document.getElementById('minZ').innerText = minZ.toFixed(2);
+                document.getElementById('maxZ').innerText = maxZ.toFixed(2);
+
+                // UI Tabelle aktualisieren Gyro
+                document.getElementById('nowXg').innerText = gx.toFixed(0);
+                document.getElementById('minXg').innerText = minXg.toFixed(0);
+                document.getElementById('maxXg').innerText = maxXg.toFixed(0);
+
+                document.getElementById('nowYg').innerText = gy.toFixed(0);
+                document.getElementById('minYg').innerText = minYg.toFixed(0);
+                document.getElementById('maxYg').innerText = maxYg.toFixed(0);
+
+                document.getElementById('nowZg').innerText = gz.toFixed(0);
+                document.getElementById('minZg').innerText = minZg.toFixed(0);
+                document.getElementById('maxZg').innerText = maxZg.toFixed(0);
+
+                // UI Tabelle aktualisieren Magneto
+                document.getElementById('nowXm').innerText = mx.toFixed(0);
+                document.getElementById('minXm').innerText = minXm.toFixed(0);
+                document.getElementById('maxXm').innerText = maxXm.toFixed(0);
+				
+                document.getElementById('nowYm').innerText = my.toFixed(0);
+                document.getElementById('minYm').innerText = minYm.toFixed(0);
+                document.getElementById('maxYm').innerText = maxYm.toFixed(0);
+
+                document.getElementById('nowZm').innerText = mz.toFixed(0);
+                document.getElementById('minZm').innerText = minZm.toFixed(0);
+                document.getElementById('maxZm').innerText = maxZm.toFixed(0);
+
+
+                // Logging & Graph
+                sensorLog.push({ t: timeStr, x: ax, y: ay, z: az });
+                document.getElementById('recordCount').innerText = sensorLog.length;
+
+                liveChart.data.labels.push(timeStr);
+                liveChart.data.datasets[0].data.push(ax);
+                liveChart.data.datasets[1].data.push(ay);
+                liveChart.data.datasets[2].data.push(az);
+
+                if (liveChart.data.labels.length > maxPointsInGraph) {
+                    liveChart.data.labels.shift();
+                    liveChart.data.datasets.forEach(d => d.data.shift());
+                }
+                liveChart.update('none');				
+				
+                liveChart2.data.labels.push(timeStr);
+                liveChart2.data.datasets[0].data.push(gx);
+                liveChart2.data.datasets[1].data.push(gy);
+                liveChart2.data.datasets[2].data.push(gz);
+
+                if (liveChart2.data.labels.length > maxPointsInGraph) {
+                    liveChart2.data.labels.shift();
+                    liveChart2.data.datasets.forEach(d => d.data.shift());
+                }
+                liveChart2.update('none');			
+				
+                liveChart3.data.labels.push(timeStr);
+                liveChart3.data.datasets[0].data.push(mx);
+                liveChart3.data.datasets[1].data.push(my);
+                liveChart3.data.datasets[2].data.push(mz);
+
+                if (liveChart3.data.labels.length > maxPointsInGraph) {
+                    liveChart3.data.labels.shift();
+                    liveChart3.data.datasets.forEach(d => d.data.shift());
+                }
+                liveChart3.update('none');
+            });
+
+        } catch (err) {
+            console.log("Fehler: " + err);
+        }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+        let csv = "Zeitstempel;X;Y;Z\n";
+        sensorLog.forEach(r => csv += `${r.t};${r.x};${r.y};${r.z}\n`);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `IMU_Log_${new Date().getTime()}.csv`;
+        a.click();
+    });
+</script>
+</body>
+</html>
