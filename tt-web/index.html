@@ -15,9 +15,9 @@
     <div class="controls">
         <button id="connectBtn">Sensor verbinden</button>
         <button id="downloadBtn" disabled>CSV Export</button>
-        <button id="resetBtn" onclick="resetMinMax()">Min/Max zurücksetzen</button>
+        <button id="resetBtn"  onclick="resetMinMax()">Min/Max zurücksetzen</button>
         <button id="dataStart" onclick="dataStart()">Datensammlung START</button>
-        <button id="dataStop" onclick="dataStop()">Datensammlung STOP</button>
+        <button id="dataStop"  onclick="dataStop()">Datensammlung STOP</button>
     </div>
 
     <div class="status-bar">
@@ -50,27 +50,15 @@
             </tr>
             <tr>
                 <td class="axis-name" style="color:#4caf50">Y</td>
-                <td id="nowY" class="val-now">0.00</td>
-                <td id="minY" class="val-min">0.00</td>
-                <td id="maxY" class="val-max">0.00</td>
-                <td id="nowYg" class="val-now">0.00</td>
-                <td id="minYg" class="val-min">0.00</td>
-                <td id="maxYg" class="val-max">0.00</td>
-                <td id="nowYm" class="val-now">0.00</td>
-                <td id="minYm" class="val-min">0.00</td>
-                <td id="maxYm" class="val-max">0.00</td>
+                <td id="nowY"  class="val-now">0.00</td><td id="minY"  class="val-min">0.00</td><td id="maxY"  class="val-max">0.00</td>
+                <td id="nowYg" class="val-now">0.00</td><td id="minYg" class="val-min">0.00</td><td id="maxYg" class="val-max">0.00</td>
+				<td id="nowYm" class="val-now">0.00</td><td id="minYm" class="val-min">0.00</td><td id="maxYm" class="val-max">0.00</td>
             </tr>
             <tr>
                 <td class="axis-name" style="color:#2196f3">Z</td>
-                <td id="nowZ" class="val-now">0.00</td>
-                <td id="minZ" class="val-min">0.00</td>
-                <td id="maxZ" class="val-max">0.00</td>
-                <td id="nowZg" class="val-now">0.00</td>
-                <td id="minZg" class="val-min">0.00</td>
-                <td id="maxZg" class="val-max">0.00</td>
-                <td id="nowZm" class="val-now">0.00</td>
-                <td id="minZm" class="val-min">0.00</td>
-                <td id="maxZm" class="val-max">0.00</td>
+                <td id="nowZ"  class="val-now">0.00</td><td id="minZ"  class="val-min">0.00</td><td id="maxZ"  class="val-max">0.00</td>
+                <td id="nowZg" class="val-now">0.00</td><td id="minZg" class="val-min">0.00</td><td id="maxZg" class="val-max">0.00</td>
+                <td id="nowZm" class="val-now">0.00</td><td id="minZm" class="val-min">0.00</td><td id="maxZm" class="val-max">0.00</td>
             </tr>
         </tbody>
     </table>

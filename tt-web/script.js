@@ -1,5 +1,4 @@
 let sensorLog = [];
-let sensorLogg= [];
 let minX = Infinity, maxX = -Infinity;
 let minY = Infinity, maxY = -Infinity;
 let minZ = Infinity, maxZ = -Infinity;
@@ -154,7 +153,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 
 
 			// Logging & Graph
-			sensorLog.push({ t: timeStr, x: ax, y: ay, z: az });
+			sensorLog.push({ t: timeStr, ax, ay, az, gx, gy, gz, mx, my, mz });
 			document.getElementById('recordCount').innerText = sensorLog.length;
 
 			liveChart.data.labels.push(timeStr);
@@ -197,13 +196,14 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 });
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
-	let csv = "Zeitstempel;X;Y;Z\n";
-	sensorLog.forEach(r => csv += `${r.t};${r.x};${r.y};${r.z}\n`);
+	let csv = "Zeitstempel;aX;aY;aZ;gX;gY;gZ;mX;mY;mZ\n";
+	sensorLog.forEach(r => csv += `${r.t};${r.ax};${r.ay};${r.az};${r.gx};${r.gy};${r.gz};${r.mx};${r.my};${r.mz}\n`);
 	const blob = new Blob([csv], { type: 'text/csv' });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = `IMU_Log_${new Date().getTime()}.csv`;
+	//a.download = `IMU_Log_${new Date().getTime()}.csv`;
+	a.download = `IMU_Log.csv`;
 	a.click();
 });
 
