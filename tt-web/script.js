@@ -8,59 +8,66 @@ let minZg= Infinity, maxZg= -Infinity;
 let minXm= Infinity, maxXm= -Infinity;
 let minYm= Infinity, maxYm= -Infinity;
 let minZm= Infinity, maxZm= -Infinity;
+let logMe = 1;
 
 const maxPointsInGraph = 60;
 const ctx = document.getElementById('liveChart').getContext('2d');
+
 const liveChart = new Chart(ctx, {
-	type: 'line',
-	data: {
-		labels: [],
-		datasets: [
-			{ label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
-		]
-	},
-	options: {
-		responsive: true,
-		maintainAspectRatio: false,
-		animation: false,
-		scales: {
-			y: { min: -25, max: 25 },
-			x: { display: false }
-		}
-	}
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            // Datensätze für die linke Achse (-25 bis 25)
+            { label: 'X (Beschleunigung)', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
+            { label: 'Y (Beschleunigung)', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
+            { label: 'Z (Beschleunigung)', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
+            
+            // Datensätze für die rechte Achse (-500 bis 500)
+            { label: 'X (Drehung)', borderColor: '#ff5252', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' },
+            { label: 'Y (Drehung)', borderColor: '#4caf50', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' },
+            { label: 'Z (Drehung)', borderColor: '#2196f3', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+            x: { display: false },
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                min: -25,
+                max: 25,
+                title: { display: true, text: 'Skala ±25' }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                min: -500,
+                max: 500,
+                title: { display: true, text: 'Skala ±500' },
+                // Wichtig: Rasterlinien der zweiten Achse meist ausblenden, damit das Chart nicht "überladen" wirkt
+                grid: {
+                    drawOnChartArea: false 
+                }
+            }
+        }
+    }
 });
-const ctx2 = document.getElementById('liveChart2').getContext('2d');
-const liveChart2 = new Chart(ctx2, {
-	type: 'line',
-	data: {
-		labels: [],
-		datasets: [
-			{ label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
-		]
-	},
-	options: {
-		responsive: true,
-		maintainAspectRatio: false,
-		animation: false,
-		scales: {
-			y: { min: -500, max: 500 },
-			x: { display: false }
-		}
-	}
-});
+
 const ctx3 = document.getElementById('liveChart3').getContext('2d');
 const liveChart3 = new Chart(ctx3, {
 	type: 'line',
 	data: {
 		labels: [],
 		datasets: [
-			{ label: 'X', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Y', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
-			{ label: 'Z', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
+			{ label: 'X (Magneto)', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+			{ label: 'Y (Magneto)', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false },
+			{ label: 'Z (Magneto)', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false }
 		]
 	},
 	options: {
@@ -68,7 +75,7 @@ const liveChart3 = new Chart(ctx3, {
 		maintainAspectRatio: false,
 		animation: false,
 		scales: {
-			y: { min: -50, max: 50 },
+			y: { min: -100, max: 100 },
 			x: { display: false }
 		}
 	}
@@ -91,7 +98,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 
 		await char.startNotifications();
 		document.getElementById('statusText').innerText = "Verbunden";
-		document.getElementById('connectBtn').disabled = true;
+		//document.getElementById('connectBtn').disabled = true;
 		document.getElementById('downloadBtn').disabled = false;
 
 		char.addEventListener('characteristicvaluechanged', (event) => {
@@ -153,41 +160,15 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 
 
 			// Logging & Graph
-			sensorLog.push({ t: timeStr, ax, ay, az, gx, gy, gz, mx, my, mz });
+			if(logMe == 1){
+				sensorLog.push({ t: timeStr, ax, ay, az, gx, gy, gz, mx, my, mz });
+			}
+			
 			document.getElementById('recordCount').innerText = sensorLog.length;
-
-			liveChart.data.labels.push(timeStr);
-			liveChart.data.datasets[0].data.push(ax);
-			liveChart.data.datasets[1].data.push(ay);
-			liveChart.data.datasets[2].data.push(az);
-
-			if (liveChart.data.labels.length > maxPointsInGraph) {
-				liveChart.data.labels.shift();
-				liveChart.data.datasets.forEach(d => d.data.shift());
-			}
-			liveChart.update('none');				
 			
-			liveChart2.data.labels.push(timeStr);
-			liveChart2.data.datasets[0].data.push(gx);
-			liveChart2.data.datasets[1].data.push(gy);
-			liveChart2.data.datasets[2].data.push(gz);
+			addData(liveChart , timeStr, 2, [ax, ay, az], [gx, gy, gz]);
+			addData(liveChart3, timeStr, 1, [mx, my, mz], []);
 
-			if (liveChart2.data.labels.length > maxPointsInGraph) {
-				liveChart2.data.labels.shift();
-				liveChart2.data.datasets.forEach(d => d.data.shift());
-			}
-			liveChart2.update('none');			
-			
-			liveChart3.data.labels.push(timeStr);
-			liveChart3.data.datasets[0].data.push(mx);
-			liveChart3.data.datasets[1].data.push(my);
-			liveChart3.data.datasets[2].data.push(mz);
-
-			if (liveChart3.data.labels.length > maxPointsInGraph) {
-				liveChart3.data.labels.shift();
-				liveChart3.data.datasets.forEach(d => d.data.shift());
-			}
-			liveChart3.update('none');
 		});
 
 	} catch (err) {
@@ -195,15 +176,55 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 	}
 });
 
+/**
+ * @param {Chart} chart - Die Chart.js Instanz
+ * @param {String} label - Der Wert für die X-Achse (z.B. Zeitstempel)
+ * @param {String} numGroups - Anzahl Gruppen
+ * @param {Array} group1 - Array mit 3 Werten [x, y, z] für die linke Achse (+/- 25)
+ * @param {Array} group2 - Array mit 3 Werten [x, y, z] für die rechte Achse (+/- 500)
+ Beispielaufruf: addData(liveChart, "12:00:01", [10, -5, 2], [300, -150, 420]);
+ */
+function addData(chart, label, numGroups, group1, group2) {    
+    chart.data.labels.push(label);	// 1. Label hinzufügen
+
+    // 2. Daten für die erste Gruppe (Index 0, 1, 2)
+    chart.data.datasets[0].data.push(group1[0]); // Beschleunigung X
+    chart.data.datasets[1].data.push(group1[1]); // Beschleunigung Y
+    chart.data.datasets[2].data.push(group1[2]); // Beschleunigung Z
+
+    // 3. Daten für die zweite Gruppe (Index 3, 4, 5)
+	if(numGroups > 1){
+		if (Array.isArray(group2) && group2.length > 0) {
+			chart.data.datasets[3].data.push(group2[0]); // Gyro X
+			chart.data.datasets[4].data.push(group2[1]); // Gyro Y
+			chart.data.datasets[5].data.push(group2[2]); // Gyro Z
+		} else {
+			// Falls leer: null pushen, damit die Linien an dieser Stelle 
+			// eine Lücke haben, aber synchron zur Zeitachse bleiben.
+			chart.data.datasets[3].data.push(null); // Gyro X
+			chart.data.datasets[4].data.push(null); // Gyro Y
+			chart.data.datasets[5].data.push(null); // Gyro Z
+		}
+	}
+    
+    const maxPoints = 50;			// Optional: Begrenzung der Datenmenge (z.B. nur die letzten 50 Punkte anzeigen)
+    if (chart.data.labels.length > maxPoints) {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(dataset => dataset.data.shift());
+    }
+    
+    chart.update('none');			// Chart neu zeichnen (leistungsoptimiert ohne Animation)
+}
+
 document.getElementById('downloadBtn').addEventListener('click', () => {
 	let csv = "Zeitstempel;aX;aY;aZ;gX;gY;gZ;mX;mY;mZ\n";
 	sensorLog.forEach(r => csv += `${r.t};${r.ax};${r.ay};${r.az};${r.gx};${r.gy};${r.gz};${r.mx};${r.my};${r.mz}\n`);
 	const blob = new Blob([csv], { type: 'text/csv' });
 	const url = URL.createObjectURL(blob);
+	const now1 = new Date();
 	const a = document.createElement('a');
 	a.href = url;
-	//a.download = `IMU_Log_${new Date().getTime()}.csv`;
-	a.download = `IMU_Log.csv`;
+	a.download = `IMU_Log_${now1.toLocaleTimeString()}.csv`;
 	a.click();
 });
 
@@ -219,5 +240,10 @@ function resetMinMax() {
 
 function dataStart() {
 	sensorLog = [];
+	logMe = 1;
 	document.getElementById('recordCount').innerText = sensorLog.length;
+}
+
+function dataStop() {
+	logMe = 0;
 }

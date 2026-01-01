@@ -10,7 +10,13 @@
 <body>
 
 <div class="container">
-    <h1>BMI270 Sensor Analyse</h1>
+	<div class="controls">
+		<h1>BMI150/ BMI270 Sensor Analyse</h1>
+		<div class="status-bar">
+			Status: <span id="statusText">Bereit</span> | 
+			Datensätze: <span id="recordCount">0</span>
+		</div>
+	</div>
     
     <div class="controls">
         <button id="connectBtn">Sensor verbinden</button>
@@ -20,12 +26,6 @@
         <button id="dataStop"  onclick="dataStop()">Datensammlung STOP</button>
     </div>
 
-    <div class="status-bar">
-        Status: <span id="statusText">Bereit</span> | 
-        Datensätze: <span id="recordCount">0</span>
-    </div>
-	
-	<h2>Beschleunigung</h2>
     <table>
         <thead>
             <tr>
@@ -64,7 +64,6 @@
     </table>
 
     <div class="chart-container"><canvas id="liveChart" ></canvas></div>
-    <div class="chart-container"><canvas id="liveChart2"></canvas></div>
     <div class="chart-container"><canvas id="liveChart3"></canvas></div>
 
 </div>
