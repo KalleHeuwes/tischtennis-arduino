@@ -11,19 +11,21 @@ let minZm= Infinity, maxZm= -Infinity;
 let logMe = 1;
 
 const maxPointsInGraph = 60;
+let scale1 = 8;
+let scale2 = 500;
 const ctx = document.getElementById('liveChart').getContext('2d');
-
+const enableChartCheckbox = document.getElementById('enableChart');
 const liveChart = new Chart(ctx, {
     type: 'line',
     data: {
         labels: [],
         datasets: [
-            // Datensätze für die linke Achse (-25 bis 25)
+            // Datensätze für die linke Achse (-scale1 bis scale1)
             { label: 'X (Beschleunigung)', borderColor: '#ff5252', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
             { label: 'Y (Beschleunigung)', borderColor: '#4caf50', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
             { label: 'Z (Beschleunigung)', borderColor: '#2196f3', data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y' },
             
-            // Datensätze für die rechte Achse (-500 bis 500)
+            // Datensätze für die rechte Achse (-scale2 bis scale2)
             { label: 'X (Drehung)', borderColor: '#ff5252', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' },
             { label: 'Y (Drehung)', borderColor: '#4caf50', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' },
             { label: 'Z (Drehung)', borderColor: '#2196f3', borderDash: [5, 5], data: [], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'y1' }
@@ -39,21 +41,19 @@ const liveChart = new Chart(ctx, {
                 type: 'linear',
                 display: true,
                 position: 'left',
-                min: -25,
-                max: 25,
-                title: { display: true, text: 'Skala ±25' }
+                min: -1 * scale1,
+                max: scale1,
+                title: { display: true, text: 'Skala Beschleunigung' }
             },
             y1: {
                 type: 'linear',
                 display: true,
                 position: 'right',
-                min: -500,
-                max: 500,
-                title: { display: true, text: 'Skala ±500' },
+                min: -1 * scale2,
+                max: scale2,
+                title: { display: true, text: 'Skala Drehung' },
                 // Wichtig: Rasterlinien der zweiten Achse meist ausblenden, damit das Chart nicht "überladen" wirkt
-                grid: {
-                    drawOnChartArea: false 
-                }
+                grid: { drawOnChartArea: false }
             }
         }
     }
@@ -83,7 +83,8 @@ const liveChart3 = new Chart(ctx3, {
 
 const SERVICE_UUID = 0x1101;
 const CHARACTERISTIC_UUID = 0x2101;
-
+const needleWrapper = document.getElementById('needleWrapper');
+const headingValueSpan = document.getElementById('headingValue');
 
 document.getElementById('connectBtn').addEventListener('click', async () => {
 	try {
@@ -158,7 +159,10 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 			document.getElementById('minZm').innerText = minZm.toFixed(0);
 			document.getElementById('maxZm').innerText = maxZm.toFixed(0);
 
-
+			if (enableChartCheckbox.checked) {
+				addData(liveChart , timeStr, 2, [ax, ay, az], [gx, gy, gz]);
+				addData(liveChart3, timeStr, 1, [mx, my, mz], []);
+			}
 			// Logging & Graph
 			if(logMe == 1){
 				sensorLog.push({ t: timeStr, ax, ay, az, gx, gy, gz, mx, my, mz });
@@ -166,8 +170,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 			
 			document.getElementById('recordCount').innerText = sensorLog.length;
 			
-			addData(liveChart , timeStr, 2, [ax, ay, az], [gx, gy, gz]);
-			addData(liveChart3, timeStr, 1, [mx, my, mz], []);
+			updateCompass(mx, my);
 
 		});
 
@@ -246,4 +249,29 @@ function dataStart() {
 
 function dataStop() {
 	logMe = 0;
+}
+
+// --- KOMPASS BERECHNUNG ---
+function updateCompass(mx, my) {
+	// 1. Winkel berechnen (atan2 gibt Radianten zurück: -PI bis +PI)
+	// Wir tauschen my und mx und negieren my, damit 0 Grad Norden ist
+	// Dies ist eine vereinfachte Annahme für einen flach liegenden Sensor.
+	let angleRad = Math.atan2(my, mx);
+
+	// 2. In Grad umrechnen
+	let angleDeg = angleRad * (180 / Math.PI);
+
+	// 3. Auf 0-360 Grad normalisieren (optional, aber schöner für Text)
+	if (angleDeg < 0) {
+		 angleDeg += 360;
+	}
+
+	// 4. Die Nadel rotieren (CSS transform)
+	// Wir müssen den Winkel für die CSS Rotation anpassen, damit er zur Grafik passt
+	// (atan2 0 Grad ist oft "Osten", wir wollen aber Norden oben haben)
+	const rotationOffset = 0; 
+	needleWrapper.style.transform = `rotate(${angleDeg + rotationOffset}deg)`;
+	
+	// Text aktualisieren
+	headingValueSpan.innerText = angleDeg.toFixed(0);
 }

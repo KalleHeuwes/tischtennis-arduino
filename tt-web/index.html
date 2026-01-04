@@ -17,6 +17,10 @@
 			Datensätze: <span id="recordCount">0</span>
 		</div>
 	</div>
+	<div style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <input type="checkbox" id="enableChart" checked style="width: 20px; height: 20px; cursor: pointer;">
+        <label for="enableChart" style="font-weight: bold; cursor: pointer;">Live-Graph aktiv</label>
+    </div>
     
     <div class="controls">
         <button id="connectBtn">Sensor verbinden</button>
@@ -26,6 +30,7 @@
         <button id="dataStop"  onclick="dataStop()">Datensammlung STOP</button>
     </div>
 
+	
     <table>
         <thead>
             <tr>
@@ -67,5 +72,22 @@
     <div class="chart-container"><canvas id="liveChart3"></canvas></div>
 
 </div>
+	
+	<div class="sidebar">
+			<div class="compass-box">
+				<h3>Ausrichtung <span id="headingValue" class="heading-val">0</span>°</h3>
+				<div class="compass">
+					<div class="compass-label n">N</div>
+					<div class="compass-label e">O</div>
+					<div class="compass-label s">S</div>
+					<div class="compass-label w">W</div>
+					<div id="needleWrapper" class="needle-wrapper">
+						<div class="needle"></div>
+						<div class="needle-south"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </body>
 </html>

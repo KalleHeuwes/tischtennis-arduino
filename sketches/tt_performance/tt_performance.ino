@@ -1,15 +1,21 @@
+/*
+    Ermittelt die Sensordaten von Gyroscope, Acceleration und Magnetometer
+    Diese werden über Bluetooth in einem String bereitgestellt: ax, ay, az, gx, gy, gz, mx, my, mz
+*/
+
 #include <ArduinoBLE.h>
 #include <Arduino_BMI270_BMM150.h>
 
 // BLE Definitionen
-BLEService sensorService("1101"); 
-BLEStringCharacteristic accelDataChar("2101", BLERead | BLENotify, 50);
+BLEService              sensorService("1101"); 
+BLEStringCharacteristic sensorData("2101", BLERead | BLENotify, 50);
 
-const float G_TO_MS2 = 9.80665f;
+//const float G_TO_MS2 = 9.80665f;
 const float thresholda = 0.2;
 const float thresholdg = 2;
 
-float ax_a, ay_a, az_a;
+//float ax_a, ay_a, az_a;
+float ax, ay, az;
 float mx, my, mz;
 float gx, gy, gz;
 float lastXa = 0, lastYa = 0, lastZa = 0;
@@ -34,7 +40,7 @@ void setup() {
   // BLE Konfiguration
   BLE.setLocalName("Nano33_IMU");
   BLE.setAdvertisedService(sensorService);
-  sensorService.addCharacteristic(accelDataChar);
+  sensorService.addCharacteristic(sensorData);
   BLE.addService(sensorService);
   
   // Startet das Sichtbar-Sein
@@ -42,25 +48,21 @@ void setup() {
   Serial.println("Bluetooth gestartet. Warte auf Verbindung...");
 }
 
-void loop() {
-  // Überprüfe ständig auf eine Verbindung
-  BLEDevice central = BLE.central();
+void loop() {  
+  BLEDevice central = BLE.central();        // Überprüfe ständig auf eine Verbindung
 
   if (central) {
-    digitalWrite(LED_BUILTIN, HIGH); // LED an bei Verbindung
-    Serial.print("Verbunden mit: ");
-    Serial.println(central.address());
+    digitalWrite(LED_BUILTIN, HIGH);        // LED an bei Verbindung
+    Serial.println("Verbunden mit: " + central.address());
 
     while (central.connected()) {
       if (IMU.accelerationAvailable()) {
-        IMU.readAcceleration(ax_a, ay_a, az_a);
-        float ax = ax_a * G_TO_MS2;
-        float ay = ay_a * G_TO_MS2;
-        float az = az_a * G_TO_MS2;
-
-        IMU.readGyroscope(gx, gy, gz);
-
-        IMU.readMagneticField(mx, my, mz);
+        IMU.readGyroscope     (gx, gy, gz);
+        IMU.readMagneticField (mx, my, mz);
+        IMU.readAcceleration  (ax, ay, az);
+        //float ax = ax_a * G_TO_MS2;
+        //float ay = ay_a * G_TO_MS2;
+        //float az = az_a * G_TO_MS2;
 
         if (abs(ax - lastXa) > thresholda || abs(ay - lastYa) > thresholda || abs(az - lastZa) > thresholda ||
             abs(gx - lastXg) > thresholdg || abs(gy - lastYg) > thresholdg || abs(gz - lastZg) > thresholdg
@@ -68,8 +70,8 @@ void loop() {
           String data = String(ax) + "," + String(ay) + "," + String(az) + "," +
                         String(gx) + "," + String(gy) + "," + String(gz) + "," +
                         String(mx) + "," + String(my) + "," + String(mz);   // Daten als CSV-String formatieren
-          accelDataChar.writeValue(data);                                   // Per Bluetooth senden          
-          Serial.println("Gesendet: " + data);
+          sensorData.writeValue(data);                                   // Per Bluetooth senden          
+          //Serial.println("Gesendet: " + data);
           lastXa = ax; lastYa = ay; lastZa = az;
           lastXg = gx; lastYg = gy; lastZg = gz;
         }
