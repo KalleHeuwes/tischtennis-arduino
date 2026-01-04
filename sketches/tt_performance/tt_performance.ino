@@ -23,7 +23,7 @@ float lastXg = 0, lastYg = 0, lastZg = 0;
 
 void setup() {
   Serial.println("setup");
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
