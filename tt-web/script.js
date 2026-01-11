@@ -11,7 +11,7 @@ let minZm= Infinity, maxZm= -Infinity;
 let logMe = 1;
 
 const maxPointsInGraph = 60;
-let scale1 = 8;
+let scale1 = 5;
 let scale2 = 500;
 const ctx = document.getElementById('liveChart').getContext('2d');
 const enableChartCheckbox = document.getElementById('enableChart');

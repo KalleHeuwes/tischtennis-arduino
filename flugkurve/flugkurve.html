@@ -60,99 +60,143 @@
         reader.readAsText(file);
     }
 
-    function parseCsv(text) {
-        const lines = text.trim().split('\n');
-        const headers = lines[0].toLowerCase().split(';');
-        
-        const col = {
-            t: headers.indexOf('zeitstempel'),
-            ax: headers.indexOf('ax'),
-            ay: headers.indexOf('ay'),
-            az: headers.indexOf('az')
-        };
+	function parseCsv(text, key) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].toLowerCase().split(';');
+    const col = {
+        t: headers.indexOf('zeitstempel'),
+        ax: headers.indexOf('ax'), ay: headers.indexOf('ay'), az: headers.indexOf('az'),
+        gx: headers.indexOf('gx'), gy: headers.indexOf('gy'), gz: headers.indexOf('gz')
+    };
 
-        if (col.t === -1 || col.ax === -1) throw new Error("Header nicht erkannt!");
-
-        let trajectory = [];
-        let pos = { x: 0, y: 0, z: 0 };
-        let vel = { x: 0, y: 0, z: 0 };
-        
-        const firstRow = lines[1].split(';');
-        const offset = {
-            x: parseFloat(firstRow[col.ax].replace(',', '.')),
-            y: parseFloat(firstRow[col.ay].replace(',', '.')),
-            z: parseFloat(firstRow[col.az].replace(',', '.'))
-        };
-        let lastT = timeToSeconds(firstRow[col.t]);
-
-        for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(';');
-            if (row.length < 4) continue;
-
-            const currentT = timeToSeconds(row[col.t]);
-            let dt = currentT - lastT;
-            if (dt <= 0) dt = 0.005; 
-
-            const rx = parseFloat(row[col.ax].replace(',', '.'));
-            const ry = parseFloat(row[col.ay].replace(',', '.'));
-            const rz = parseFloat(row[col.az].replace(',', '.'));
-
-            // Beschleunigungs-Betrag (G-Kraft) für die Farbe
-            const accelMag = Math.sqrt(rx*rx + ry*ry + rz*rz);
-
-            // Integration zu Position (m/s^2)
-            vel.x += (rx - offset.x) * 9.81 * dt;
-            vel.y += (ry - offset.y) * 9.81 * dt;
-            vel.z += (rz - offset.z) * 9.81 * dt;
-
-            pos.x += vel.x * dt;
-            pos.y += vel.y * dt;
-            pos.z += vel.z * dt;
-
-            trajectory.push([pos.x, pos.y, pos.z, accelMag]);
-            lastT = currentT;
-        }
-        return trajectory;
+    let trajectory = [];
+    let pos = { x: 0, y: 0, z: 0 }, vel = { x: 0, y: 0, z: 0 };
+    let orientation = { yaw: 0 };
+    
+    // Mittelwert der ersten 3 Zeilen für stabileren Offset (Bias-Korrektur)
+    let bias = { x: 0, y: 0, z: 0 };
+    for(let j=1; j<=3; j++) {
+        let r = lines[j].split(';');
+        bias.x += parseFloat(r[col.ax].replace(',', '.'));
+        bias.y += parseFloat(r[col.ay].replace(',', '.'));
+        bias.z += parseFloat(r[col.az].replace(',', '.'));
     }
+    bias.x /= 3; bias.y /= 3; bias.z /= 3;
 
+    let lastT = timeToSeconds(lines[1].split(';')[col.t]);
+
+    for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(';');
+        if (row.length < 7) continue;
+
+        const currentT = timeToSeconds(row[col.t]);
+        let dt = currentT - lastT;
+        if (dt <= 0 || dt > 0.1) dt = 0.006; // Begrenzung von Zeit-Sprüngen
+
+        // GYRO: Rotation integrieren
+        const gz = parseFloat(row[col.gz].replace(',', '.')) * (Math.PI / 180);
+        orientation.yaw += gz * dt;
+
+        // ACCEL: Rohwerte in m/s^2 umwandeln und Bias entfernen
+        let lax = (parseFloat(row[col.ax].replace(',', '.')) - bias.x) * 9.81;
+        let lay = (parseFloat(row[col.ay].replace(',', '.')) - bias.y) * 9.81;
+        let laz = (parseFloat(row[col.az].replace(',', '.')) - bias.z) * 9.81;
+
+        // Low-Pass Filter Simulation: Rauschen unterdrücken
+        if (Math.abs(lax) < 0.2) lax = 0;
+        if (Math.abs(lay) < 0.2) lay = 0;
+
+        // Rotation auf X/Y anwenden (Yaw-Korrektur)
+        const cosY = Math.cos(orientation.yaw);
+        const sinY = Math.sin(orientation.yaw);
+        let gax = lax * cosY - lay * sinY;
+        let gay = lax * sinY + lay * cosY;
+
+        // Integration
+        vel.x += gax * dt; vel.y += gay * dt; vel.z += laz * dt;
+        pos.x += vel.x * dt; pos.y += vel.y * dt; pos.z += vel.z * dt;
+
+        // Magnitude für die Farbe (Wir nehmen hier die G-Kraft Differenz)
+        const accelMag = Math.sqrt(lax*lax + lay*lay + laz*laz) / 9.81;
+        trajectory.push([pos.x, pos.y, pos.z, accelMag]);
+        lastT = currentT;
+    }
+    return trajectory;
+}
+	
     function updateChart() {
-        const getMarkers = (data) => {
-            if (!data || data.length === 0) return { s: [], e: [] };
-            return { s: [data[0]], e: [data[data.length-1]] };
-        };
-        const m1 = getMarkers(dataSets.s1);
-        const m2 = getMarkers(dataSets.s2);
+		const getMarkers = (data) => {
+			if (!data || data.length === 0) return { start: [], end: [] };
+			// Wir nehmen nur [x, y, z] ohne den 4. Wert (Intensität), 
+			// damit die VisualMap diesen Punkt ignoriert
+			return {
+				start: [[data[0][0], data[0][1], data[0][2]]], 
+				end: [[data[data.length - 1][0], data[data.length - 1][1], data[data.length - 1][2]]]
+			};
+		};
 
-        myChart.setOption({
-            visualMap: {
-                show: true,
-                dimension: 3, // Nutzt accelMag
-                min: 1, 
-                max: 4, 
-                inRange: {
-                    // Von Hellblau zu fast Schwarz
-                    color: ['#00ffff', '#2a80b9', '#1a5276', '#000814']
-                },
-                text: ['G-Kraft hoch', 'G-Kraft niedrig'],
-                textStyle: { color: '#ccc' }
-            },
-            xAxis3D: { type: 'value', scale: true },
-            yAxis3D: { type: 'value', scale: true },
-            zAxis3D: { type: 'value', scale: true },
-            grid3D: {
-                boxWidth: 200, boxHeight: 100, boxDepth: 100,
-                viewControl: { beta: 40, alpha: 15 }
-            },
-            series: [
-                { name: 'S1', type: 'line3D', data: dataSets.s1, lineStyle: { width: 10 } },
-                { name: 'S2', type: 'line3D', data: dataSets.s2, lineStyle: { width: 10 } },
-                // Startpunkte (Grün)
-                { type: 'scatter3D', data: [...m1.s, ...m2.s], symbolSize: 15, itemStyle: { color: '#00ff00', opacity: 1 } },
-                // Endpunkte (Rot)
-                { type: 'scatter3D', data: [...m1.e, ...m2.e], symbolSize: 15, itemStyle: { color: '#ff0000', opacity: 1 } }
-            ]
-        });
-    }
+		const m1 = getMarkers(dataSets.s1);
+		const m2 = getMarkers(dataSets.s2);
+		
+		// Dynamische Berechnung des Max-G-Wertes für die Skala
+		const allPoints = [...dataSets.s1, ...dataSets.s2];
+		const maxG = allPoints.length > 0 ? Math.max(...allPoints.map(p => p[3])) : 5;
+
+		myChart.setOption({
+			visualMap: {
+				show: true,
+				dimension: 3, 
+				min: 1, 
+				max: maxG * 0.8, // Skala an reale Daten anpassen 
+				inRange: { color: ['#00ffff', '#2a80b9', '#000000'] }, // Hell -> Dunkel
+				// WICHTIG: Die VisualMap nur auf die Linien-Serien anwenden (Index 0 und 1)
+				seriesIndex: [0, 1]//, 
+				//text: ['G-Kraft hoch', 'G-Kraft niedrig'],
+				//textStyle: { color: '#ccc' }
+			},
+			xAxis3D: { type: 'value', scale: true, name: 'X' },
+			yAxis3D: { type: 'value', scale: true, name: 'Y (Tiefe)' },
+			zAxis3D: { type: 'value', scale: true, name: 'Z (Höhe)' },
+			grid3D: {
+				boxWidth: 200, boxHeight: 100, boxDepth: 100,
+				viewControl: { beta: 40, alpha: 15 }
+			},
+			series: [
+				{ name: 'Schlag 1', type: 'line3D', data: dataSets.s1, lineStyle: { width: 10 } },
+				{ name: 'Schlag 2', type: 'line3D', data: dataSets.s2, lineStyle: { width: 10 } },
+				
+				// Startpunkte: VisualMap wird durch seriesIndex oben ignoriert
+				{
+					name: 'Start',
+					type: 'scatter3D',
+					data: [...m1.start, ...m2.start],
+					symbolSize: 20,
+					itemStyle: { color: '#00ff00', opacity: 1 }, // Jetzt echtes GRÜN
+					label: { 
+						show: true, 
+						formatter: 'Start', 
+						position: 'top',
+						textStyle: { color: '#00ff00', fontWeight: 'bold' } 
+					}
+				},
+				
+				// Endpunkte
+				{
+					name: 'Ende',
+					type: 'scatter3D',
+					data: [...m1.end, ...m2.end],
+					symbolSize: 20,
+					itemStyle: { color: '#ff0000', opacity: 1 }, // Jetzt echtes ROT
+					label: { 
+						show: true, 
+						formatter: 'Ende', 
+						position: 'top',
+						textStyle: { color: '#ff0000', fontWeight: 'bold' } 
+					}
+				}
+			]
+		});
+	}
 
     window.addEventListener('resize', () => myChart.resize());
 </script>

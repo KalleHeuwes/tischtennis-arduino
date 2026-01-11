@@ -22,7 +22,7 @@ float lastXa = 0, lastYa = 0, lastZa = 0;
 float lastXg = 0, lastYg = 0, lastZg = 0;
 
 void setup() {
-  Serial.println("setup");
+  Serial.println("setup mit 115200 baud");
   Serial.begin(115200);
 
   pinMode(LED_BUILTIN, OUTPUT);
