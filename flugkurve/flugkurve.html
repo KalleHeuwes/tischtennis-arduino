@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>ECharts 3D - Beschleunigungs-Heatmap</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #1a1a1a; color: white; }
+        #controls { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(40,40,40,0.9); padding: 15px; border-radius: 8px; border: 1px solid #444; }
+        #chart-container { width: 100vw; height: 100vh; }
+        #status { color: #0f0; font-family: monospace; font-size: 12px; margin-top: 10px; }
+        input { margin-bottom: 8px; display: block; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <strong>3D Trajektorie & G-Kraft</strong>
+    <input type="file" id="file1" accept=".csv">
+    <input type="file" id="file2" accept=".csv">
+    <div id="status">Warte auf CSV-Dateien...</div>
+</div>
+
+<div id="chart-container"></div>
+
+<script>
+    const chartDom = document.getElementById('chart-container');
+    const myChart = echarts.init(chartDom);
+    const status = document.getElementById('status');
+    
+    let dataSets = { s1: [], s2: [] };
+
+    document.getElementById('file1').addEventListener('change', (e) => handleFile(e, 's1'));
+    document.getElementById('file2').addEventListener('change', (e) => handleFile(e, 's2'));
+
+    // HILFSFUNKTION: Zeit-String zu Sekunden
+    function timeToSeconds(tStr) {
+        if (!tStr) return 0;
+        const parts = tStr.split(':');
+        if (parts.length < 3) return 0;
+        const h = parseFloat(parts[0]);
+        const m = parseFloat(parts[1]);
+        const s = parseFloat(parts[2].replace(',', '.'));
+        return h * 3600 + m * 60 + s;
+    }
+
+    function handleFile(event, key) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                dataSets[key] = parseCsv(e.target.result);
+                status.innerHTML = `Geladen: ${dataSets[key].length} Punkte.`;
+                updateChart();
+            } catch (err) {
+                status.innerHTML = "Fehler: " + err.message;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function parseCsv(text) {
+        const lines = text.trim().split('\n');
+        const headers = lines[0].toLowerCase().split(';');
+        
+        const col = {
+            t: headers.indexOf('zeitstempel'),
+            ax: headers.indexOf('ax'),
+            ay: headers.indexOf('ay'),
+            az: headers.indexOf('az')
+        };
+
+        if (col.t === -1 || col.ax === -1) throw new Error("Header nicht erkannt!");
+
+        let trajectory = [];
+        let pos = { x: 0, y: 0, z: 0 };
+        let vel = { x: 0, y: 0, z: 0 };
+        
+        const firstRow = lines[1].split(';');
+        const offset = {
+            x: parseFloat(firstRow[col.ax].replace(',', '.')),
+            y: parseFloat(firstRow[col.ay].replace(',', '.')),
+            z: parseFloat(firstRow[col.az].replace(',', '.'))
+        };
+        let lastT = timeToSeconds(firstRow[col.t]);
+
+        for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(';');
+            if (row.length < 4) continue;
+
+            const currentT = timeToSeconds(row[col.t]);
+            let dt = currentT - lastT;
+            if (dt <= 0) dt = 0.005; 
+
+            const rx = parseFloat(row[col.ax].replace(',', '.'));
+            const ry = parseFloat(row[col.ay].replace(',', '.'));
+            const rz = parseFloat(row[col.az].replace(',', '.'));
+
+            // Beschleunigungs-Betrag (G-Kraft) für die Farbe
+            const accelMag = Math.sqrt(rx*rx + ry*ry + rz*rz);
+
+            // Integration zu Position (m/s^2)
+            vel.x += (rx - offset.x) * 9.81 * dt;
+            vel.y += (ry - offset.y) * 9.81 * dt;
+            vel.z += (rz - offset.z) * 9.81 * dt;
+
+            pos.x += vel.x * dt;
+            pos.y += vel.y * dt;
+            pos.z += vel.z * dt;
+
+            trajectory.push([pos.x, pos.y, pos.z, accelMag]);
+            lastT = currentT;
+        }
+        return trajectory;
+    }
+
+    function updateChart() {
+        const getMarkers = (data) => {
+            if (!data || data.length === 0) return { s: [], e: [] };
+            return { s: [data[0]], e: [data[data.length-1]] };
+        };
+        const m1 = getMarkers(dataSets.s1);
+        const m2 = getMarkers(dataSets.s2);
+
+        myChart.setOption({
+            visualMap: {
+                show: true,
+                dimension: 3, // Nutzt accelMag
+                min: 1, 
+                max: 4, 
+                inRange: {
+                    // Von Hellblau zu fast Schwarz
+                    color: ['#00ffff', '#2a80b9', '#1a5276', '#000814']
+                },
+                text: ['G-Kraft hoch', 'G-Kraft niedrig'],
+                textStyle: { color: '#ccc' }
+            },
+            xAxis3D: { type: 'value', scale: true },
+            yAxis3D: { type: 'value', scale: true },
+            zAxis3D: { type: 'value', scale: true },
+            grid3D: {
+                boxWidth: 200, boxHeight: 100, boxDepth: 100,
+                viewControl: { beta: 40, alpha: 15 }
+            },
+            series: [
+                { name: 'S1', type: 'line3D', data: dataSets.s1, lineStyle: { width: 10 } },
+                { name: 'S2', type: 'line3D', data: dataSets.s2, lineStyle: { width: 10 } },
+                // Startpunkte (Grün)
+                { type: 'scatter3D', data: [...m1.s, ...m2.s], symbolSize: 15, itemStyle: { color: '#00ff00', opacity: 1 } },
+                // Endpunkte (Rot)
+                { type: 'scatter3D', data: [...m1.e, ...m2.e], symbolSize: 15, itemStyle: { color: '#ff0000', opacity: 1 } }
+            ]
+        });
+    }
+
+    window.addEventListener('resize', () => myChart.resize());
+</script>
+</body>
+</html>
