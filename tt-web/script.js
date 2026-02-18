@@ -92,6 +92,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 			filters: [{ name: 'Nano33_IMU' }],
 			optionalServices: [SERVICE_UUID]
 		});
+		console.table(device);
 
 		const server = await device.gatt.connect();
 		const service = await server.getPrimaryService(SERVICE_UUID);
@@ -104,6 +105,7 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 
 		char.addEventListener('characteristicvaluechanged', (event) => {
 			const rawString = new TextDecoder().decode(event.target.value);
+			console.table(rawString);
 			const [ax, ay, az, gx, gy, gz, mx, my, mz] = rawString.split(',').map(Number);
 			
 			const now = new Date();

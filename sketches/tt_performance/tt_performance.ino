@@ -1,34 +1,21 @@
-/*
-    Ermittelt die Sensordaten von Gyroscope, Acceleration und Magnetometer
-    Diese werden über Bluetooth in einem String bereitgestellt: ax, ay, az, gx, gy, gz, mx, my, mz
-*/
-
+#include "Arduino_BMI270_BMM150.h"
 #include <ArduinoBLE.h>
-#include <Arduino_BMI270_BMM150.h>
+#include <Wire.h>
 
 // BLE Definitionen
 BLEService              sensorService("1101"); 
 BLEStringCharacteristic sensorData("2101", BLERead | BLENotify, 50);
 
-//const float G_TO_MS2 = 9.80665f;
-const float thresholda = 0.2;
-const float thresholdg = 2;
-
-//float ax_a, ay_a, az_a;
-float ax, ay, az;
-float mx, my, mz;
-float gx, gy, gz;
-float lastXa = 0, lastYa = 0, lastZa = 0;
-float lastXg = 0, lastYg = 0, lastZg = 0;
+float maxG = 0.0;
+const uint8_t BMI270_ADDR = 0x68; 
 
 void setup() {
-  Serial.println("setup mit 115200 baud");
   Serial.begin(115200);
+  while (!Serial);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-
+  // 1. Initialisierung der Library
   if (!IMU.begin()) {
-    Serial.println("Fehler: IMU nicht gefunden!");
+    Serial.println("Fehler: IMU konnte nicht gestartet werden.");
     while (1);
   }
 
@@ -36,7 +23,7 @@ void setup() {
     Serial.println("Fehler: Bluetooth konnte nicht gestartet werden!");
     while (1);
   }
-
+  
   // BLE Konfiguration
   BLE.setLocalName("Nano33_IMU");
   BLE.setAdvertisedService(sensorService);
@@ -46,46 +33,46 @@ void setup() {
   // Startet das Sichtbar-Sein
   BLE.advertise();
   Serial.println("Bluetooth gestartet. Warte auf Verbindung...");
+
+  // 2. Umstellen auf 16g über Wire1
+  // Wir nutzen Wire1, da der Scanner dort den Sensor gefunden hat.
+  Wire1.beginTransmission(BMI270_ADDR);
+  Wire1.write(0x41); // Register ACC_RANGE
+  Wire1.write(0x03); // 0x03 entspricht +/- 16g
+  
+  if (Wire1.endTransmission() == 0) {
+    Serial.println("Erfolg: Sensor auf 16g Messbereich umgestellt!");
+  } else {
+    Serial.println("Fehler: Kommunikation auf Wire1 fehlgeschlagen.");
+  }
 }
 
-void loop() {  
+void loop() {
   BLEDevice central = BLE.central();        // Überprüfe ständig auf eine Verbindung
+  float x, y, z;
 
   if (central) {
-    digitalWrite(LED_BUILTIN, HIGH);        // LED an bei Verbindung
     Serial.println("Verbunden mit: " + central.address());
-
     while (central.connected()) {
       if (IMU.accelerationAvailable()) {
-        IMU.readGyroscope     (gx, gy, gz);
-        IMU.readMagneticField (mx, my, mz);
-        IMU.readAcceleration  (ax, ay, az);
-        //float ax = ax_a * G_TO_MS2;
-        //float ay = ay_a * G_TO_MS2;
-        //float az = az_a * G_TO_MS2;
+        IMU.readAcceleration(x, y, z);
 
-        if (abs(ax - lastXa) > thresholda || abs(ay - lastYa) > thresholda || abs(az - lastZa) > thresholda ||
-            abs(gx - lastXg) > thresholdg || abs(gy - lastYg) > thresholdg || abs(gz - lastZg) > thresholdg
-            ) {          
-          String data = String(ax) + "," + String(ay) + "," + String(az) + "," +
-                        String(gx) + "," + String(gy) + "," + String(gz) + "," +
-                        String(mx) + "," + String(my) + "," + String(mz);   // Daten als CSV-String formatieren
-          sensorData.writeValue(data);                                   // Per Bluetooth senden          
-          //Serial.println("Gesendet: " + data);
-          lastXa = ax; lastYa = ay; lastZa = az;
-          lastXg = gx; lastYg = gy; lastZg = gz;
+        // WICHTIG: Teste, ob die Library die Skalierung anpasst.
+        // Falls der Schläger im Stillstand nur 0.25 anzeigt, müssen wir hier mit 4 multiplizieren.
+        float currentG = sqrt(x * x + y * y + z * z) * 4;
+
+        if (currentG > maxG) {
+          maxG = currentG;
+          Serial.print("Neuer Peak: ");
+          Serial.print(maxG);
+          Serial.println(" g");
+          String data = "Neuer Peak in g," + String(maxG);   // Daten als CSV-String formatieren
+          sensorData.writeValue(data);                                   // Per Bluetooth senden        
         }
       }
+
       // Kurze Pause zur Entlastung des BLE-Stacks
       delay(20);
-    }   
-
-    // Wenn die Verbindung getrennt wurde
-    digitalWrite(LED_BUILTIN, LOW); // LED aus
-    Serial.println("Verbindung getrennt.");
-    
-    // WICHTIG: Explizit wieder sichtbar werden
-    BLE.advertise(); 
-    Serial.println("Wieder im Advertising-Modus...");
+    }
   }
 }
