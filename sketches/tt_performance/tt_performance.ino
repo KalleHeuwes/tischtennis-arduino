@@ -4,14 +4,15 @@
 
 // BLE Definitionen
 BLEService              sensorService("1101"); 
-BLEStringCharacteristic sensorData("2101", BLERead | BLENotify, 50);
+BLEStringCharacteristic sensorData("2101", BLERead | BLENotify, 80);
 
 float maxG = 0.0;
 const uint8_t BMI270_ADDR = 0x68; 
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
+  unsigned long startWait = millis();
+  while (!Serial && millis() - startWait < 3000);
 
   // 1. Initialisierung der Library
   if (!IMU.begin()) {
@@ -57,22 +58,24 @@ void loop() {
       if (IMU.accelerationAvailable()) {
         IMU.readAcceleration(x, y, z);
 
-        // WICHTIG: Teste, ob die Library die Skalierung anpasst.
-        // Falls der Schläger im Stillstand nur 0.25 anzeigt, müssen wir hier mit 4 multiplizieren.
+        // Teste, ob Library Skalierung anpasst. Falls Schläger im Stillstand nur 0.25 anzeigt, hier mit 4 multiplizieren.
         float currentG = sqrt(x * x + y * y + z * z) * 4;
+        unsigned long timestamp = millis(); // Aktueller Zeitstempel
 
-        if (currentG > maxG) {
-          maxG = currentG;
-          Serial.print("Neuer Peak: ");
-          Serial.print(maxG);
-          Serial.println(" g");
-          String data = "Neuer Peak in g," + String(maxG);   // Daten als CSV-String formatieren
-          sensorData.writeValue(data);                                   // Per Bluetooth senden        
+        if(currentG > 2){
+          if (currentG > maxG) {
+            maxG = currentG;
+            Serial.print("Neuer Peak: " + String(maxG) + " g");
+            String data = "PERFORMANCE:" + String(timestamp) + "," + String(maxG) + "," + String(x) + "," + String(y) + "," + String(z);
+            sensorData.writeValue(data);                                   // Per Bluetooth senden        
+          } 
         }
-      }
-
-      // Kurze Pause zur Entlastung des BLE-Stacks
-      delay(20);
+        if (currentG < 1.2 && currentG < maxG) {
+            sensorData.writeValue("PERFORMANCE:zurückgesetzt," + String(currentG) + "," + String(maxG)); 
+            maxG = 0; // Aktueller Wert sinkt wieder -> maxG zurücksetzen, um für den nächsten Schlag bereit zu sein.
+        }
+      }      
+      delay(20);    // Kurze Pause zur Entlastung des BLE-Stacks
     }
   }
 }

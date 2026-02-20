@@ -18,6 +18,8 @@
 		</div>
 	</div>
 	<div style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <input type="checkbox" id="modePerformance" checked style="width: 20px; height: 20px; cursor: pointer;">
+        <label for="modePerformance" style="font-weight: bold; cursor: pointer;">Performance-Modus</label>
         <input type="checkbox" id="enableChart" checked style="width: 20px; height: 20px; cursor: pointer;">
         <label for="enableChart" style="font-weight: bold; cursor: pointer;">Live-Graph aktiv</label>
     </div>
@@ -31,49 +33,66 @@
     </div>
 
 	
-    <table>
+    <table id="tabPerformance">
         <thead>
             <tr>
-                <th></th>
-                <th colspan="3">Beschleunigung (m/s²)</th>
-                <th colspan="3">Drehung (Grad)</th>
-                <th colspan="3">Magnetometer (mTesla)</th>
-            </tr>
-            <tr>
-                <th>Achse</th>
-				<th>Akt.</th><th>Min.</th><th>Max.</th>
-                <th>Akt.</th><th>Min.</th><th>Max.</th>
-                <th>Akt.</th><th>Min.</th><th>Max.</th>
+                <th>Beschleunigung in g</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Z</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td class="axis-name" style="color:#ff5252">X</td>
-                <td id="nowX"  class="val-now">0.00</td><td id="minX"  class="val-min">0.00</td><td id="maxX"  class="val-max">0.00</td>
-                <td id="nowXg" class="val-now">0.00</td><td id="minXg" class="val-min">0.00</td><td id="maxXg" class="val-max">0.00</td>
-                <td id="nowXm" class="val-now">0.00</td><td id="minXm" class="val-min">0.00</td><td id="maxXm" class="val-max">0.00</td>
-            </tr>
-            <tr>
-                <td class="axis-name" style="color:#4caf50">Y</td>
-                <td id="nowY"  class="val-now">0.00</td><td id="minY"  class="val-min">0.00</td><td id="maxY"  class="val-max">0.00</td>
-                <td id="nowYg" class="val-now">0.00</td><td id="minYg" class="val-min">0.00</td><td id="maxYg" class="val-max">0.00</td>
-				<td id="nowYm" class="val-now">0.00</td><td id="minYm" class="val-min">0.00</td><td id="maxYm" class="val-max">0.00</td>
-            </tr>
-            <tr>
-                <td class="axis-name" style="color:#2196f3">Z</td>
-                <td id="nowZ"  class="val-now">0.00</td><td id="minZ"  class="val-min">0.00</td><td id="maxZ"  class="val-max">0.00</td>
-                <td id="nowZg" class="val-now">0.00</td><td id="minZg" class="val-min">0.00</td><td id="maxZg" class="val-max">0.00</td>
-                <td id="nowZm" class="val-now">0.00</td><td id="minZm" class="val-min">0.00</td><td id="maxZm" class="val-max">0.00</td>
+                <td id="perfG"  class="val-now">0.00</td>
+                <td id="perfX"  class="val-now">0.00</td>
+                <td id="perfY"  class="val-now">0.00</td>
+                <td id="perfZ"  class="val-now">0.00</td>
             </tr>
         </tbody>
     </table>
-
-    <div class="chart-container"><canvas id="liveChart" ></canvas></div>
-    <div class="chart-container"><canvas id="liveChart3"></canvas></div>
-
-</div>
 	
-	<div class="sidebar">
+	<div id="blockFlugkurve">
+		<table id="tabFlugkurve">
+			<thead>
+				<tr>
+					<th></th>
+					<th colspan="3">Beschleunigung (m/s²)</th>
+					<th colspan="3">Drehung (Grad)</th>
+					<th colspan="3">Magnetometer (mTesla)</th>
+				</tr>
+				<tr>
+					<th>Achse</th>
+					<th>Akt.</th><th>Min.</th><th>Max.</th>
+					<th>Akt.</th><th>Min.</th><th>Max.</th>
+					<th>Akt.</th><th>Min.</th><th>Max.</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td class="axis-name" style="color:#ff5252">X</td>
+					<td id="nowX"  class="val-now">0.00</td><td id="minX"  class="val-min">0.00</td><td id="maxX"  class="val-max">0.00</td>
+					<td id="nowXg" class="val-now">0.00</td><td id="minXg" class="val-min">0.00</td><td id="maxXg" class="val-max">0.00</td>
+					<td id="nowXm" class="val-now">0.00</td><td id="minXm" class="val-min">0.00</td><td id="maxXm" class="val-max">0.00</td>
+				</tr>
+				<tr>
+					<td class="axis-name" style="color:#4caf50">Y</td>
+					<td id="nowY"  class="val-now">0.00</td><td id="minY"  class="val-min">0.00</td><td id="maxY"  class="val-max">0.00</td>
+					<td id="nowYg" class="val-now">0.00</td><td id="minYg" class="val-min">0.00</td><td id="maxYg" class="val-max">0.00</td>
+					<td id="nowYm" class="val-now">0.00</td><td id="minYm" class="val-min">0.00</td><td id="maxYm" class="val-max">0.00</td>
+				</tr>
+				<tr>
+					<td class="axis-name" style="color:#2196f3">Z</td>
+					<td id="nowZ"  class="val-now">0.00</td><td id="minZ"  class="val-min">0.00</td><td id="maxZ"  class="val-max">0.00</td>
+					<td id="nowZg" class="val-now">0.00</td><td id="minZg" class="val-min">0.00</td><td id="maxZg" class="val-max">0.00</td>
+					<td id="nowZm" class="val-now">0.00</td><td id="minZm" class="val-min">0.00</td><td id="maxZm" class="val-max">0.00</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div class="chart-container"><canvas id="liveChart" ></canvas></div>
+		<div class="chart-container"><canvas id="liveChart3"></canvas></div>
+		<div class="sidebar">
 			<div class="compass-box">
 				<h3>Ausrichtung <span id="headingValue" class="heading-val">0</span>°</h3>
 				<div class="compass">
@@ -89,5 +108,8 @@
 			</div>
 		</div>
 	</div>
+</div>
+	
+
 </body>
 </html>

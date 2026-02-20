@@ -86,6 +86,20 @@ const CHARACTERISTIC_UUID = 0x2101;
 const needleWrapper = document.getElementById('needleWrapper');
 const headingValueSpan = document.getElementById('headingValue');
 
+const checkbox = document.getElementById('modePerformance');
+const blockFlugkurve   = document.getElementById('blockFlugkurve');
+const tabPerformance = document.getElementById('tabPerformance');
+
+checkbox.addEventListener('change', function() {
+  if (this.checked) {
+    tabPerformance.style.display = 'block';
+    blockFlugkurve.style.display = 'none';
+  } else {
+    tabPerformance.style.display = 'none';
+    blockFlugkurve.style.display = 'block';
+  }
+});
+
 document.getElementById('connectBtn').addEventListener('click', async () => {
 	try {
 		const device = await navigator.bluetooth.requestDevice({
@@ -105,7 +119,37 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 
 		char.addEventListener('characteristicvaluechanged', (event) => {
 			const rawString = new TextDecoder().decode(event.target.value);
-			console.table(rawString);
+			
+			if(rawString.startsWith('PERFORMANCE')){
+				performance(rawString);
+			}else{
+				detailData(rawString);
+			}
+
+		});
+
+	} catch (err) {
+		console.log("Fehler: " + err);
+	}
+});
+
+function performance(rawString){
+	console.log(rawString);
+	//PERFORMANCE:1089967,2.12,-0.16,0.24,-0.44
+	const [dummy, g, x, y, z] = rawString.split(',').map(Number);
+	if(rawString.startsWith('PERFORMANCE:zurückgesetzt')){
+	} else{
+		document.getElementById('perfG').innerText = g.toFixed(2);
+		document.getElementById('perfX').innerText = x.toFixed(2);
+		document.getElementById('perfY').innerText = y.toFixed(2);
+		document.getElementById('perfZ').innerText = z.toFixed(2);
+	}
+	
+}
+
+function detailData(rawString){
+	//
+	try {
 			const [ax, ay, az, gx, gy, gz, mx, my, mz] = rawString.split(',').map(Number);
 			
 			const now = new Date();
@@ -173,13 +217,10 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 			document.getElementById('recordCount').innerText = sensorLog.length;
 			
 			updateCompass(mx, my);
-
-		});
-
 	} catch (err) {
 		console.log("Fehler: " + err);
 	}
-});
+}
 
 /**
  * @param {Chart} chart - Die Chart.js Instanz
