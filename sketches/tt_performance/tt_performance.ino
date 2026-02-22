@@ -60,13 +60,14 @@ void loop() {
 
         // Teste, ob Library Skalierung anpasst. Falls Schläger im Stillstand nur 0.25 anzeigt, hier mit 4 multiplizieren.
         float currentG = sqrt(x * x + y * y + z * z) * 4;
-        unsigned long timestamp = millis(); // Aktueller Zeitstempel
+        unsigned long currentMillis = millis(); // Aktueller Zeitstempel
+        String timeString = formatMillis(currentMillis);
 
         if(currentG > 2){
           if (currentG > maxG) {
             maxG = currentG;
             Serial.print("Neuer Peak: " + String(maxG) + " g");
-            String data = "PERFORMANCE:" + String(timestamp) + "," + String(maxG) + "," + String(x) + "," + String(y) + "," + String(z);
+            String data = "PERFORMANCE:" + String(timeString) + "," + String(currentMillis) + "," + String(maxG) + "," + String(x) + "," + String(y) + "," + String(z);
             sensorData.writeValue(data);                                   // Per Bluetooth senden        
           } 
         }
@@ -78,4 +79,19 @@ void loop() {
       delay(20);    // Kurze Pause zur Entlastung des BLE-Stacks
     }
   }
+}
+
+String formatMillis(unsigned long ms) {
+  unsigned long totalSeconds = ms / 1000;
+  
+  int milliseconds = ms % 1000;
+  int seconds = totalSeconds % 60;
+  int minutes = (totalSeconds / 60) % 60;
+  int hours = (totalSeconds / 3600); // Stunden können hier über 24 hinausgehen
+
+  char buffer[20];
+  // Format: HH:MM:SS.mmm (mit führenden Nullen)
+  sprintf(buffer, "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+  
+  return String(buffer);
 }

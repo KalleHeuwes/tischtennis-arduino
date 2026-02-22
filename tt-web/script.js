@@ -10,11 +10,23 @@ let minYm= Infinity, maxYm= -Infinity;
 let minZm= Infinity, maxZm= -Infinity;
 let logMe = 1;
 
+let labels = []; // Zeitstempel (X-Achse)
+let dataG = [];
+let dataX = [];
+let dataY = [];
+let dataZ = [];
+let startMillis = 0;
+let anzMesspunkte = 0;
+
 const maxPointsInGraph = 60;
 let scale1 = 5;
 let scale2 = 500;
-const ctx = document.getElementById('liveChart').getContext('2d');
+const ctx  = document.getElementById('liveChart').getContext('2d');
+const ctx1 = document.getElementById('accelChart').getContext('2d');
+const ctx3 = document.getElementById('liveChart3').getContext('2d');
 const enableChartCheckbox = document.getElementById('enableChart');
+let accelChart = null;
+
 const liveChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -59,7 +71,6 @@ const liveChart = new Chart(ctx, {
     }
 });
 
-const ctx3 = document.getElementById('liveChart3').getContext('2d');
 const liveChart3 = new Chart(ctx3, {
 	type: 'line',
 	data: {
@@ -83,19 +94,19 @@ const liveChart3 = new Chart(ctx3, {
 
 const SERVICE_UUID = 0x1101;
 const CHARACTERISTIC_UUID = 0x2101;
-const needleWrapper = document.getElementById('needleWrapper');
+const needleWrapper    = document.getElementById('needleWrapper');
 const headingValueSpan = document.getElementById('headingValue');
 
-const checkbox = document.getElementById('modePerformance');
+const chkPerformance   = document.getElementById('modePerformance');
 const blockFlugkurve   = document.getElementById('blockFlugkurve');
-const tabPerformance = document.getElementById('tabPerformance');
+const blockPerformance = document.getElementById('blockPerformance');
 
-checkbox.addEventListener('change', function() {
+chkPerformance.addEventListener('change', function() {
   if (this.checked) {
-    tabPerformance.style.display = 'block';
+    blockPerformance.style.display = 'block';
     blockFlugkurve.style.display = 'none';
   } else {
-    tabPerformance.style.display = 'none';
+    blockPerformance.style.display = 'none';
     blockFlugkurve.style.display = 'block';
   }
 });
@@ -136,14 +147,64 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
 function performance(rawString){
 	console.log(rawString);
 	//PERFORMANCE:1089967,2.12,-0.16,0.24,-0.44
-	const [dummy, g, x, y, z] = rawString.split(',').map(Number);
+	
 	if(rawString.startsWith('PERFORMANCE:zurückgesetzt')){
+		//console.table(labels);
+		//console.table(dataG);
+		
+		anzMesspunkte = 0;
+		// Falls schon ein Chart existiert: Zerstören!
+		if (accelChart !== null) {
+			accelChart.destroy();
+		}
+        
+        accelChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Gesamt g', data: dataG, borderColor: 'black', borderWidth: 2, fill: false, tension: 0.1 },
+                    { label: 'X', data: dataX, borderColor: 'red', borderDash: [5, 5], fill: false },
+                    { label: 'Y', data: dataY, borderColor: 'green', borderDash: [5, 5], fill: false },
+                    { label: 'Z', data: dataZ, borderColor: 'blue', borderDash: [5, 5], fill: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: 'Beschleunigungsdaten (g-Kräfte)' }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: { display: true, text: 'Zeit (hh:mm:ss.ms)' }
+                    },
+                    y: {
+                        display: true,
+                        title: { display: true, text: 'Beschleunigung (g)' }
+                    }
+                }
+            }
+        });
 	} else{
-		document.getElementById('perfG').innerText = g.toFixed(2);
-		document.getElementById('perfX').innerText = x.toFixed(2);
-		document.getElementById('perfY').innerText = y.toFixed(2);
-		document.getElementById('perfZ').innerText = z.toFixed(2);
-	}
+		const [dummy, lbl, g, x, y, z] = rawString.split(','); //.map(Number);
+		document.getElementById('perfG').innerText = g; //g.toFixed(2);
+		document.getElementById('perfX').innerText = x;
+		document.getElementById('perfY').innerText = y;
+		document.getElementById('perfZ').innerText = z;
+		console.log('Größe: ' + labels.length);
+		if(anzMesspunkte == 0){
+			startMillis = parseFloat(lbl);
+		}
+		anzMesspunkte++;
+		labels.push(lbl);       // Zeitstempel
+		dataG.push(parseFloat(g));
+		dataX.push(parseFloat(x));
+		dataY.push(parseFloat(y));
+		dataZ.push(parseFloat(z));
+		document.getElementById('perfD').innerText = parseFloat(lbl) - startMillis;
+		document.getElementById('perfA').innerText = anzMesspunkte;
+}
 	
 }
 
@@ -273,6 +334,16 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
 	a.download = `IMU_Log_${now1.toLocaleTimeString()}.csv`;
 	a.click();
 });
+
+function resetPerformance(){
+	labels = [];
+	dataG = [];
+	dataX = [];
+	dataY = [];
+	dataZ = [];
+	performance('PERFORMANCE:zurückgesetzt');
+	console.log('Performancedaten zurückgesetzt');
+}
 
 function resetMinMax() {
 	minX = minY = minZ = Infinity;

@@ -32,25 +32,34 @@
         <button id="dataStop"  onclick="dataStop()">Datensammlung STOP</button>
     </div>
 
-	
-    <table id="tabPerformance">
-        <thead>
-            <tr>
-                <th>Beschleunigung in g</th>
-                <th>X</th>
-                <th>Y</th>
-                <th>Z</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td id="perfG"  class="val-now">0.00</td>
-                <td id="perfX"  class="val-now">0.00</td>
-                <td id="perfY"  class="val-now">0.00</td>
-                <td id="perfZ"  class="val-now">0.00</td>
-            </tr>
-        </tbody>
-    </table>
+	<div id="blockPerformance">
+		<button id="resetBtnPerf"  onclick="resetPerformance()">Zurücksetzen</button>
+		<table id="tabPerformance">
+			<thead>
+				<tr>
+					<th>Beschleunigung in g</th>
+					<th>X</th>
+					<th>Y</th>
+					<th>Z</th>
+					<th>Messpunkte</th>
+					<th>Schlagdauer in ms</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td id="perfG"  class="val-now">0.00</td>
+					<td id="perfX"  class="val-now">0.00</td>
+					<td id="perfY"  class="val-now">0.00</td>
+					<td id="perfZ"  class="val-now">0.00</td>
+					<td id="perfA"  class="val-now">0.00</td>
+					<td id="perfD"  class="val-now">0.00</td>
+				</tr>
+			</tbody>
+		</table>
+		<div style="width: 80%; margin: auto;">
+			<canvas id="accelChart"></canvas>
+		</div>
+	</div>
 	
 	<div id="blockFlugkurve">
 		<table id="tabFlugkurve">
