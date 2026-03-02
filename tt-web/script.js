@@ -163,7 +163,7 @@ function performance(rawString){
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Gesamt g', data: dataG, borderColor: 'black', borderWidth: 2, fill: false, tension: 0.1 },
+                    { label: 'Gesamt g', data: dataG, borderColor: 'black', borderWidth: 2, fill: false, tension: 0.2 },
                     { label: 'X', data: dataX, borderColor: 'red', borderDash: [5, 5], fill: false },
                     { label: 'Y', data: dataY, borderColor: 'green', borderDash: [5, 5], fill: false },
                     { label: 'Z', data: dataZ, borderColor: 'blue', borderDash: [5, 5], fill: false }
